@@ -2,5 +2,5 @@ package cm.modelo;
 
 public enum FieldEvent {
 
-    OPEN, MARK, UNMARK, EXPLOSION
+    OPEN, MARK, UNMARK, EXPLOSION, RESTART
 }

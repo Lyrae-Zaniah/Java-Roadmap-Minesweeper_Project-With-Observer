@@ -2,15 +2,18 @@ package cm.modelo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class Board implements FieldObserver {
 
-    private int lines;
-    private int columns;
-    private int mines;
+    private final int lines;
+    private final int columns;
+    private final int mines;
 
     private final List<Field> fields = new ArrayList<>();
+    private final List<Consumer<ResultEvent>> observers =
+            new ArrayList<>();
 
     public Board(int lines, int columns, int mines) {
         this.lines = lines;
@@ -22,18 +25,26 @@ public class Board implements FieldObserver {
         sortTheMines();
     }
 
+    public void forEachField(Consumer<Field> function) {
+        fields.forEach(function);
+    }
+
+    public void registerObserver(Consumer<ResultEvent> observer) {
+        observers.add(observer);
+    }
+
+    private void notifyObserver(Boolean result) {
+        observers.stream()
+                .forEach(o -> o.accept(new ResultEvent(result)));
+    }
+
     public void open(int line, int column) {
-        try {
             fields.parallelStream()
                     .filter(f -> f.getLine() == line  && f.getColumn() == column)
                     .findFirst()
                     .ifPresent(f -> f.open());
-        } catch (Exception e) {
-            // FIXME Ajustar a implementação do método abrir
-            fields.forEach(f -> f.setOpen(true));
-            throw e;
-        }
     }
+
     public void toggleMarking(int line, int column) {
         fields.parallelStream()
                 .filter(f -> f.getLine() == line  && f.getColumn() == column)
@@ -77,12 +88,29 @@ public class Board implements FieldObserver {
         sortTheMines();
     }
 
+    public int getLines() {
+        return lines;
+    }
+
+    public int getColumns() {
+        return columns;
+    }
+
     @Override
     public void eventOccurred(Field field, FieldEvent event) {
         if(event == FieldEvent.EXPLOSION) {
-            System.out.println("Perdeu...");
+            showMines();
+            notifyObserver(false);
         } else if(objectiveAchieved()) {
             System.out.println("Ganhou");
+            notifyObserver(true);
         }
+    }
+
+    private void showMines() {
+        fields.stream()
+                .filter(c -> c.isMined())
+                .filter(c -> !c.isMarked())
+                .forEach(f -> f.setOpen(true));
     }
 }
